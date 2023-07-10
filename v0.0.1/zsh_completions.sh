@@ -1,4 +1,4 @@
-# shellcheck shell=bash
+# shellcheck shell=sh disable=SC3043,SC1090,SC2154,SC3054
 ___advise_completer_zsh_completions(){
     local filename="$___X_CMD_ADVISE_MAN_COMPLETIONS_FOLDER_SRC/_${words[1]}"
     [ ! -f "$filename" ] || . "$filename"
