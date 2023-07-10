@@ -12,4 +12,6 @@ $(x ls "$___X_CMD_ADVISE_MAN_COMPLETIONS_FOLDER_SRC")
 A
 }
 
-___x_cmd_advise_man_load__zsh_completions
+if [ -n "$ZSH_VERSION" ]; then
+    ___x_cmd_advise_man_load__zsh_completions
+fi
