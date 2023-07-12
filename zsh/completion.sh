@@ -1,7 +1,7 @@
 # shellcheck shell=sh disable=SC3043,SC1090,SC2154,SC3054
 ___advise_completer_zsh_completions(){
     local x_=; ___x_cmd_advise_man_completion___getfile_
-    [ ! -r "$x_" ] || . "$x_"
+    [ ! -r "$x_" ] || . "$x_" 2>/dev/null
 }
 
 ___x_cmd_advise_man_load__zsh_completions(){
