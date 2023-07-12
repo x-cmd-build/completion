@@ -1,11 +1,11 @@
 # shellcheck shell=sh disable=SC3043,SC1090,SC2154,SC3054
 ___advise_completer_zsh_completions(){
-    local filename="$___X_CMD_ADVISE_MAN_COMPLETIONS_FOLDER_SRC/_${words[1]}"
-    [ ! -f "$filename" ] || . "$filename"
+    local x_=; ___x_cmd_advise_man_completion___getfile_
+    [ ! -r "$x_" ] || . "$x_"
 }
 
 ___x_cmd_advise_man_load__zsh_completions(){
-    [ -d "$___X_CMD_ADVISE_MAN_COMPLETIONS_FOLDER_SRC" ] || return 0
+    { [ -r "$___X_CMD_ADVISE_MAN_COMPLETIONS_FOLDER_SRC" ] && [ -d "$___X_CMD_ADVISE_MAN_COMPLETIONS_FOLDER_SRC" ] ;} || return 0
     local _line; while read -r _line;do
         compdef ___advise_completer_zsh_completions "${_line#*_}"
     done <<A
