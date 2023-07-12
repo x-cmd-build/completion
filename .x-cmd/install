@@ -1,3 +1,4 @@
+# shellcheck shell=dash
 _completion_shellfile_copy(){
     local l; x fsiter --folder | while read -r l; do
         command cp "$l/"* "$___X_CMD_ROOT_DATA/advise/completion/$___X_CMD_ADVISE_MAN_PKG_VERSION/$l-completion"
