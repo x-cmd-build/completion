@@ -1,9 +1,17 @@
-# shellcheck shell=dash
-_completion_shellfile_copy(){
-    local l; x fsiter --folder | while read -r l; do
-        x:info "Copy $l/* to $___X_CMD_ROOT_DATA/advise/completion/$___X_CMD_ADVISE_MAN_PKG_VERSION/$l-completion"
-        command cp "$l/"* "$___X_CMD_ROOT_DATA/advise/completion/$___X_CMD_ADVISE_MAN_PKG_VERSION/$l-completion"
-    done
-}
+# shellcheck shell=bash
 
-# _completion_shellfile_copy
+xrc advise
+
+_folder="$___X_CMD_ROOT_DATA/advise/completion/$___X_CMD_ADVISE_MAN_PKG_VERSION"
+x rmrf "$_folder"
+x mkdirp "$_folder"
+
+x:info "Copy bash completion to $_folder/bash-completion"
+x cp -rf "$(x wsroot)/bash/"* "$_folder/bash-completion/"
+x touch "$_folder/bash-completion/timefile"
+
+x:info "Copy zsh completion to $_folder/zsh-completion"
+x cp -rf "$(x wsroot)/zsh/"* "$_folder/zsh-completion/"
+x touch "$_folder/zsh-completion/timefile"
+
+unset _folder
