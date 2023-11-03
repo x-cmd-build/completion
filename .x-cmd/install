@@ -6,4 +6,4 @@ _completion_shellfile_copy(){
     done
 }
 
-_completion_shellfile_copy
+# _completion_shellfile_copy

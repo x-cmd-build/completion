@@ -1,0 +1,89 @@
+# shellcheck shell=bash
+x wsroot_
+get_bash_completion(){
+    [ -n "$BASH_VERSION" ] || N=x M="Need to be executed in bash environment" log:ret:1
+    local dir="${___X_CMD_WSROOT_}/bash"
+    x mkdirp "$dir"
+
+    local version="2.11"
+    local url="https://github.com/scop/bash-completion/releases/download/$version/bash-completion-$version.tar.xz"
+    local tgz="$version.tar.xz"
+    [ -f "$tgz" ] || x curl -L --speed-time 5 --speed-limit 100 "$url" --output "$tgz" || {
+        x:error "Fail to download $tgz form scop/bash-completion"
+        x rmrf "$tgz"
+        return 1
+    }
+
+    x rmrf "bash-completion-$version";  x uz "$tgz" || return
+
+    (
+        x cd "bash-completion-$version" || return
+        _backup_glob='@(#*#|*@(~|.@(bak|orig|rej|swp|dpkg*|rpm@(orig|new|save))))'
+        _blacklist_glob='@(acroread.sh|gcc|ipsec)'
+
+        x rmrf "$dir/completions";  x mkdirp "$dir/completions"
+        x:info "Copy bash completions"
+        item=0
+        for i in completions/*; do
+            [[ ${i##*/} != @($_backup_glob|Makefile*|$_blacklist_glob) && -f $i && -r $i ]] || {
+                x:warn "Fileter $i"
+                continue
+            }
+            x cp -f "$i" "$dir/completions"
+            item=$((item + 1))
+        done
+        x:info "bash completions item: $item"
+
+        x:info "Copy bash README.md COPYING"
+        x cp -f README.md   "$dir/"
+        x cp -f COPYING     "$dir/"
+    )
+
+    x rmrf "bash-completion-$version" "$tgz"
+}
+
+
+get_zsh_completion(){
+    local dir="${___X_CMD_WSROOT_}/zsh"
+    x mkdirp "$dir"
+
+    local version=0.35.0
+    local url="https://github.com/zsh-users/zsh-completions/archive/refs/tags/$version.tar.gz"
+
+    local tgz="$version.tar.gz"
+    [ -f "$tgz" ] || x curl -L --speed-time 5 --speed-limit 100 "$url" --output "$tgz" || {
+        x:error "Fail to download $tgz form scop/bash-completion"
+        x rmrf "$tgz"
+        return 1
+    }
+
+    x rmrf "zsh-completions-$version";  x uz "$tgz" || return
+
+    (
+        x cd "zsh-completions-$version" || return
+        x rmrf "$dir/src"
+        x:info "Copy src/ LICENSE and README.md"
+        for i in src/*; do
+            [ "$i" = "${i#_}" ] || {
+                x:warn "Notice file => $i"
+            }
+            x cp -f "$i" "$dir/src/"
+            item=$((item + 1))
+        done
+        x:info "zsh src item: $item"
+        x cp -f LICENSE    "$dir/"
+        x cp -f README.md  "$dir/"
+    )
+
+    x rmrf "zsh-completions-$version" "$tgz"
+}
+
+build_completion(){
+    x cd "$___X_CMD_WSROOT_" || return
+    case "$1" in
+        bash)   get_bash_completion ;;
+        zsh)    get_zsh_completion  ;;
+    esac
+}
+
+build_completion "$@"
