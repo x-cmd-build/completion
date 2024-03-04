@@ -1,0 +1,55 @@
+# shellcheck    shell=sh        disable=SC3043,2034,2154,2030,2031
+
+f_move(){
+    local source="$1"
+    local tgtdir="$2"
+
+    x:info "Move $source ==> $tgtdir"
+    { x rmrf "$tgtdir" && x mkdirp "$tgtdir"; } || return
+    case "${source}" in
+        *bash-completion)
+            x rmrf "${tgtdir}/completions" "${tgtdir}/README.md" "${tgtdir}/COPYING"
+            x cp -rf "${source}/completions"          "${tgtdir}/"
+            x cp -rf "${source}/README.md"            "${tgtdir}/"
+            x cp -rf "${source}/bash_completion"      "${tgtdir}/"
+            x cp -rf "${source}/COPYING"              "${tgtdir}/"
+            x rm "${tgtdir}/completions/ipsec" "${tgtdir}/completions/gcc" "${tgtdir}/completions/Makefile.am"
+        ;;
+        *)
+            x rmrf "${tgtdir}/src" "${tgtdir}/README.md" "${tgtdir}/LICENSE"
+            x cp -rf "${source}/src"                  "${tgtdir}/"
+            x cp -rf "${source}/LICENSE"              "${tgtdir}/"
+            x cp -rf "${source}/README.md"            "${tgtdir}/"
+        ;;
+    esac
+    # x rmrf "${source}"
+}
+
+f_assemble(){
+    f_assemble_one "scop/bash-completion"        "2.12.0"    .tmp/bash-completion || return
+    f_assemble_one "zsh-users/zsh-completions"   "0.35.0"    .tmp/zsh-completion  || return
+
+    f_move .tmp/bash-completion bash-completion || return
+    f_move .tmp/zsh-completion  zsh-completion  || return
+
+    x rmrf .tmp
+}
+
+f_assemble_one(){
+    local repo="$1"
+    local version="$2"
+    local output="$3"
+    local url="https://github.com/$repo/archive/refs/tags/${version}.tar.gz"
+    x:info "Curl [url=$url]" 
+    x curl -L -sS --speed-time 5 --speed-limit 100 "$url" --output "${version}.tar.gz" || return
+    x rmrf "$output"
+    x ensurefp "$output"
+
+    x uz "${version}.tar.gz" "$output.tmp"  || return
+    x fsiter --dir1_ "$output.tmp"          || return
+    x mv "$output.tmp/$x_" "$output"        || return
+    x rmrf "${version}.tar.gz" "$output.tmp"
+}
+
+f_assemble
+
