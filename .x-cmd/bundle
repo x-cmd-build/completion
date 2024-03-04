@@ -3,23 +3,37 @@
 f_move(){
     local source="$1"
     local tgtdir="$2"
+    local tmpdir=".tmp/data"
 
     x:info "Move $source ==> $tgtdir"
-    { x rmrf "$tgtdir" && x mkdirp "$tgtdir"; } || return
+    [ -d "$tgtdir" ] || return
+    
     case "${source}" in
         *bash-completion)
+            tmpdir="$tmpdir/b"
+            x rmrf "$tmpdir" && x mkdirp "$tmpdir"
+            x mv "$tgtdir/bash_completion"  "$tmpdir/"
+            x mv "$tgtdir/completion.sh"    "$tmpdir/"
+
             x rmrf "${tgtdir}/completions" "${tgtdir}/README.md" "${tgtdir}/COPYING"
             x cp -rf "${source}/completions"          "${tgtdir}/"
             x cp -rf "${source}/README.md"            "${tgtdir}/"
             x cp -rf "${source}/bash_completion"      "${tgtdir}/"
             x cp -rf "${source}/COPYING"              "${tgtdir}/"
             x rm "${tgtdir}/completions/ipsec" "${tgtdir}/completions/gcc" "${tgtdir}/completions/Makefile.am"
+
+            x mv "$tmpdir/"*                          "${tgtdir}/"
         ;;
         *)
+            tmpdir="$tmpdir/z"
+            x rmrf "$tmpdir" && x mkdirp "$tmpdir"
+            x mv "$tgtdir/completion.sh"    "$tmpdir/"
+
             x rmrf "${tgtdir}/src" "${tgtdir}/README.md" "${tgtdir}/LICENSE"
             x cp -rf "${source}/src"                  "${tgtdir}/"
             x cp -rf "${source}/LICENSE"              "${tgtdir}/"
             x cp -rf "${source}/README.md"            "${tgtdir}/"
+            x mv "$tmpdir/"*                          "${tgtdir}/"
         ;;
     esac
     # x rmrf "${source}"
