@@ -22,6 +22,14 @@ f_move(){
             x cp -rf "${source}/COPYING"              "${tgtdir}/"
             x rm "${tgtdir}/completions/ipsec" "${tgtdir}/completions/gcc" "${tgtdir}/completions/Makefile.am"
 
+            \ls "$tgtdir/completions" | x arg1 '
+                a=$(< "$tgtdir/completions/$1" x rg "This serves as a fallback"); 
+                [ -z "$a" ] || {
+                    x:warn "Remove $tgtdir/completions/$1"
+                    x rmrf "$tgtdir/completions/$1"
+                }
+            '
+
             x mv "$tmpdir/"*                          "${tgtdir}/"
         ;;
         *)

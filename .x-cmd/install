@@ -2,8 +2,8 @@
 
 xrc advise
 
-# _folder="$___X_CMD_ROOT_DATA/advise/completion/$___X_CMD_ADVISE_MAN_PKG_COMPLETIONS_VERSION"
-_folder="$___X_CMD_PKG_ROOT_PATH/metadata/$___X_CMD_PKG_VERSION/advise/completion"
+# _folder="$___X_CMD_PKG_ROOT_PATH/metadata/$___X_CMD_PKG_VERSION/advise/completion"
+_folder="$___X_CMD_ROOT_DATA/advise/completion/$___X_CMD_ADVISE_MAN_PKG_COMPLETIONS_VERSION"
 x rmrf "$_folder"
 x mkdirp "$_folder"
 
