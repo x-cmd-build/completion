@@ -3265,8 +3265,8 @@ _comp_complete_load()
     # Pass -D to define *something*, or otherwise there will be no completion
     # at all.
     _comp_load -D -- "$cmd" && return 124
-} &&
-    complete -D -F _comp_complete_load
+}
+    # complete -D -F _comp_complete_load
 
 # Function for loading and calling functions from dynamically loaded
 # completion files that may not have been sourced yet.
