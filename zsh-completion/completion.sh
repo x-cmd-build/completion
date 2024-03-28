@@ -14,5 +14,6 @@ ___x_cmd_advise_man_load__zsh_completions(){
 }
 
 if [ -n "$ZSH_VERSION" ]; then
+    command -v compdef 2>/dev/null 1>&2 || return    
     ___x_cmd_advise_man_load__zsh_completions
 fi
