@@ -1,0 +1,27 @@
+# shellcheck shell=bash disable=1091,2016
+
+func(){
+    local data='
+___x_cmd_advise_man_completer___bash_source_code(){
+    # Source completion code.
+    [ -r "$___X_CMD_ADVISE_MAN_COMPLETIONS_FOLDER/bash_completion" ] || return
+    . "$___X_CMD_ADVISE_MAN_COMPLETIONS_FOLDER/bash_completion" 2>/dev/null 1>&2
+}
+
+___x_cmd_advise_man_completer___bash_lazyload(){
+    ___x_cmd_advise_man_completer___bash_source_code || complete -r "${COMP_WORDS[0]}";
+}
+'
+    (
+        complete -r
+        . "$( x wsroot )/bash-completion/bash_completion"
+        complete
+    ) | data="$data" command awk '
+BEGIN{ str = ENVIRON["data"]; str = str "\ncomplete -F ___x_cmd_advise_man_completer___bash_lazyload"; }
+{ str = str " " $NF; }
+END{ print str; }
+'
+}
+
+___x_cmd mkdirp "$( x wsroot )/bash-completion"
+func > "$( x wsroot )/bash-completion/lazyload.sh"
