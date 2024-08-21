@@ -31,7 +31,6 @@ f_move(){
             '
 
             x mv "$tmpdir/"*                          "${tgtdir}/"
-            x ws gen-bash-completion-lazyload
         ;;
         *)
             tmpdir="$tmpdir/z"
