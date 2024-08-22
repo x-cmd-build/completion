@@ -28,7 +28,7 @@ ___x_cmd_advise_man_completer___bash_lazyload(){
     ___x_cmd_advise_man_completer___bash_source_code || complete -r "${COMP_WORDS[0]}";
 }
 ' command awk '
-BEGIN{ str = ENVIRON["data"]; str = str; }
+BEGIN{ str = ENVIRON["data"]; }
 ((NR % 50) == 1){ str = str "\ncomplete -F ___x_cmd_advise_man_completer___bash_lazyload"; }
 { str = str " " $NF; }
 END{ print str; }
