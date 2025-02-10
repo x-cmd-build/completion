@@ -1,6 +1,6 @@
 # shellcheck shell=sh disable=SC3043,SC1090,SC2154,SC3054
 ___x_cmd_advise_man_completer___zsh_lazyload(){
-    local x_=; ___x_cmd_advise_man_which___completion_getfile_ "${words[1]}"
+    local x_=; ___x_cmd advise man which completion_getfile_ "${words[1]}"
     { [ -r "$x_" ] && [ -f "$x_" ] ;} || return
     . "$x_" 2>/dev/null
 }
