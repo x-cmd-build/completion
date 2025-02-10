@@ -1,4 +1,6 @@
 # shellcheck    shell=sh        disable=SC3043,2034,2154,2030,2031
+# https://github.com/scop/bash-completion/releases
+# https://github.com/zsh-users/zsh-completions/releases
 
 f_move(){
     local source="$1"
