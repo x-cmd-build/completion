@@ -29,9 +29,8 @@
 #        - check for no global variable pollution
 # FIXME: why PS4='$BASH_SOURCE:$LINENO: ' shows sometimes negative lines?
 # FIXME: timeout on tarball listing
-# FIXME: cache 'tar --help' parsing results into global variables
 # FIXME: at least 'tar -<tab>' should show some helping text (apart from just
-#        pure option advices)
+#        pure option advice)
 # FIXME: short option completion should be more intuitive
 #        - verbose mode option should be advised multiple times
 #        - mode option should be advised only once
@@ -59,7 +58,7 @@
 _comp_deprecate_var 2.12 \
     COMP_TAR_INTERNAL_PATHS BASH_COMPLETION_CMD_TAR_INTERNAL_PATHS
 
-_comp_cmd_gtar__parse_help_opt()
+_comp_cmd_gtar__init_parse_help_opt()
 {
     local opttype arg opt separator optvar
     opttype=long
@@ -98,7 +97,7 @@ _comp_cmd_gtar__parse_help_opt()
     eval "$optvar=\"\$$optvar$separator\"\"$opt\""
 }
 
-_comp_cmd_gtar__parse_help_line()
+_comp_cmd_gtar__init_parse_help_line()
 {
     local i
     local -a tmp
@@ -107,7 +106,7 @@ _comp_cmd_gtar__parse_help_line()
             case "$i" in
                 # regular options
                 --* | -*)
-                    _comp_cmd_gtar__parse_help_opt "$i" "$2"
+                    _comp_cmd_gtar__init_parse_help_opt "$i" "$2"
                     ;;
 
                 # end once there is single non-option word
@@ -119,8 +118,21 @@ _comp_cmd_gtar__parse_help_line()
     done <<<"$1"
 }
 
-_comp_cmd_gtar__parse_help()
+# Parse the output of "tar --help" with GNU tar and store the parse results
+# in a global variable.
+#
+# @var[out] _comp_cmd_gtar__saved_opts
+#     The parse results are stored in this global variable in a form that can
+#     be evaluated by the builtin "eval".
+_comp_cmd_gtar__init_parse_help()
 {
+    local long_arg_none=""
+    local long_arg_opt=""
+    local long_arg_req=""
+    local short_arg_none=""
+    local short_arg_opt=""
+    local short_arg_req=""
+
     local str line arg
     while IFS= read -r line; do
         # Ok, this requires some comment probably.  The GNU help output prints
@@ -141,14 +153,49 @@ _comp_cmd_gtar__parse_help()
                 [[ ${BASH_REMATCH[1]} ]] && arg=opt || arg=req
             fi
 
-            _comp_cmd_gtar__parse_help_line "$str" "$arg"
+            _comp_cmd_gtar__init_parse_help_line "$str" "$arg"
         fi
     done <<<"$(tar --help)"
 
-    long_opts="\
-        $long_arg_none        $long_arg_opt        $long_arg_req"
+    local long_opts="$long_arg_none $long_arg_opt $long_arg_req"
 
-    short_opts="$short_arg_none$short_arg_opt$short_arg_req"
+    local short_opts="$short_arg_none$short_arg_opt$short_arg_req"
+
+    printf -v _comp_cmd_gtar__saved_opts '%s=%q ' \
+        long_opts "$long_opts" \
+        short_opts "$short_opts" \
+        long_arg_none "$long_arg_none" \
+        long_arg_opt "$long_arg_opt" \
+        long_arg_req "$long_arg_req" \
+        short_arg_none "$short_arg_none" \
+        short_arg_opt "$short_arg_opt" \
+        short_arg_req "$short_arg_req"
+
+    # Clean up functions only used in initialization
+    unset -f _comp_cmd_gtar__init_parse_help
+    unset -f _comp_cmd_gtar__init_parse_help_line
+    unset -f _comp_cmd_gtar__init_parse_help_opt
+}
+_comp_cmd_gtar__init_parse_help
+
+# Load the parse results of "tar --help" for GNU tar into variables.
+#
+# @var[out] long_opts
+# @var[out] short_opts
+# @var[out] long_arg_none
+# @var[out] long_arg_opt
+# @var[out] long_arg_req
+# @var[out] short_arg_none
+# @var[out] short_arg_opt
+# @var[out] short_arg_req
+#     The parse results are returned in these variables.
+#
+# @var[in] _comp_cmd_gtar__saved_opts
+#     The parse results are obtained by evaluating this variable with the
+#     "eval" builtin.
+_comp_cmd_gtar__load_opts()
+{
+    eval -- "$_comp_cmd_gtar__saved_opts"
 }
 
 # Hack: parse --warning keywords from tar's error output
@@ -165,8 +212,15 @@ _comp_cmd_gtar__parse_warnings()
     _comp_compgen -- -W '"${warnings[@]}"'
 }
 
+# @var[out] old_opt_progress
+# @var[out] old_opt_used
+# @var[out,array] old_opt_parsed
 _comp_cmd_tar__parse_old_opt()
 {
+    old_opt_progress=""
+    old_opt_used=""
+    old_opt_parsed=()
+
     local first_word char
 
     # current word is the first word
@@ -193,6 +247,10 @@ _comp_cmd_tar__parse_old_opt()
 }
 
 # Make the analysis of whole command line.
+#
+# @var[out] old_opt_progress
+# @var[out] old_opt_used
+# @var[out,array] old_opt_parsed
 _comp_cmd_tar__preparse_cmdline()
 {
     local first_arg=set i modes="ctxurdA"
@@ -203,10 +261,17 @@ _comp_cmd_tar__preparse_cmdline()
 
     for i in "$@"; do
         case "$i" in
-            --delete | --test-label)
+            --delete | --test-label | --catenate | --concatenate | --extract | --get | --update | --list | --append | --create)
                 tar_mode=${i:2:100}
-                tar_mode_arg=$i
-                break
+                ;;
+            --bzip2 | --xz | --lzip | --lzma | --lzop | --zstd)
+                tar_compression_mode=${i:2:100}
+                ;;
+            --gzip | --gunzip | --ungzip)
+                tar_compression_mode="gzip"
+                ;;
+            --compress | --uncompress)
+                tar_compression_mode="compress"
                 ;;
             --*)
                 # skip
@@ -236,7 +301,7 @@ _comp_cmd_tar__file_option()
     local ext="$1"
 
     case "$tar_mode" in
-        c)
+        c | create)
             # no need to advise user to re-write existing tarball
             _comp_compgen_filedir -d
             ;;
@@ -391,7 +456,7 @@ _comp_cmd_tar__adjust_PREV_from_old_option()
 _comp_cmd_tar__extract_like_mode()
 {
     local i
-    for i in x d t delete; do
+    for i in x d t delete extract get list; do
         [[ $tar_mode == "$i" ]] && return 0
     done
     return 1
@@ -437,12 +502,17 @@ _comp_cmd_tar__cleanup_prev()
     fi
 }
 
+_comp_cmd_tar__is_bsdtar()
+{
+    [[ ${COMP_WORDS[0]} == ?(*/)bsdtar ]]
+}
+
 _comp_cmd_tar__detect_ext()
 {
     local tars='@(@(tar|spkg)?(.@(Z|[bgx]z|bz2|lz?(ma|o)|zst))|t@([abglx]z|b?(z)2|zst)|cbt|gem|xbps)'
-    if [[ ${COMP_WORDS[0]} == ?(*/)bsdtar ]]; then
+    if _comp_cmd_tar__is_bsdtar; then
         # https://github.com/libarchive/libarchive/wiki/LibarchiveFormats
-        tars=${tars/%\)/|pax|cpio|iso|zip|@(j|x)ar|mtree|a|7z|warc}
+        tars=${tars/%\)/|pax|cpio|iso|zip|apk|ipa|hap|@(j|x)ar|mtree|a|7z|warc}
         if _comp_cmd_tar__extract_like_mode; then
             # read only
             tars+="|l@(ha|zh)|rar|cab)"
@@ -453,49 +523,58 @@ _comp_cmd_tar__detect_ext()
     fi
     ext="$tars"
 
-    case "$tar_mode_arg" in
-        --*)
-            # Should never happen?
-            ;;
-        ?(-)*[cr]*f)
+    if ! _comp_cmd_tar__extract_like_mode; then
+        if ! _comp_cmd_tar__is_bsdtar; then
             ext='@(tar|gem|spkg|cbt|xpbs)'
-            case ${words[1]} in
-                *a*) ext="$tars" ;;
-                *z*) ext='t?(ar.)gz' ;;
-                *Z*) ext='ta@(r.Z|z)' ;;
-                *[jy]*) ext='t@(?(ar.)bz?(2)|b2)' ;;
-                *J*) ext='t?(ar.)xz' ;;
-            esac
-            ;;
-        +([^ZzJjy])f)
-            # Pass through using defaults above
-            ;;
-        *[Zz]*f)
-            ext='@(@(t?(ar.)|spkg.)@(gz|Z)|taz)'
-            ;;
-        *[jy]*f)
-            ext='@(t?(ar.)bz?(2)|spkg|tb2)'
-            ;;
-        *[J]*f)
-            ext='@(@(tar|spkg).@(lzma|xz)|t[lx]z)'
-            ;;
-    esac
+        fi
+        case $tar_mode_arg:$tar_compression_mode in
+            *a*:none | *:auto-compress)
+                ext="$tars"
+                ;;
+            *z*:none | *:gzip)
+                ext='t?(ar.)gz'
+                ;;
+            *Z*:none | *:compress)
+                ext='ta@(r.Z|z)'
+                ;;
+            *[jy]*:none | *:bzip2)
+                ext='t@(?(ar.)bz?(2)|b2)'
+                ;;
+            *J*:none | *:xz)
+                ext='t?(ar.)xz'
+                ;;
+        esac
+    else
+        #TODO: lzip, lzma, lzop
+        case $tar_mode_arg:$tar_compression_mode in
+            *[Zz]*f:none | *:gzip | *:compress)
+                ext='@(@(t?(ar.)|spkg.)@(gz|Z)|taz)'
+                ;;
+            *[jy]*f:none | *:bzip2)
+                ext='@(t?(ar.)bz?(2)|spkg|tb2)'
+                ;;
+            *J*f:none | *:xz)
+                ext='@(@(tar|spkg).@(lzma|xz)|t[lx]z)'
+                ;;
+            *:zstd)
+                ext='t?(ar.)zst'
+                ;;
+        esac
+    fi
 }
 
 _comp_cmd_tar__gnu()
 {
-    local long_opts short_opts basic_tar="" \
-        long_arg_none="" long_arg_opt="" long_arg_req="" \
-        short_arg_none="" short_arg_opt="" short_arg_req="" \
-        tar_mode tar_mode_arg old_opt_progress="" \
-        old_opt_used="" old_opt_parsed=()
+    local basic_tar=""
 
-    # Main mode, e.g. -x or -c (extract/creation)
+    # Main mode, e.g. "x" or "c" or the long forms "extract" or "create"
     local tar_mode=none
 
     # The mode argument, e.g. -cpf or -c
-    # FIXME: handle long options
     local tar_mode_arg=
+
+    # Compression mode - from long options
+    local tar_compression_mode=none
 
     if [[ -v _comp_cmd_tar__debug ]]; then
         set -x
@@ -503,12 +582,15 @@ _comp_cmd_tar__gnu()
     fi
 
     local cur prev words cword was_split comp_args
-
     _comp_initialize -s -- "$@" || return
 
     # Fill the {long,short}_{opts,arg*}
-    _comp_cmd_gtar__parse_help
+    local long_opts short_opts \
+        long_arg_none long_arg_opt long_arg_req \
+        short_arg_none short_arg_opt short_arg_req
+    _comp_cmd_gtar__load_opts
 
+    local old_opt_progress old_opt_used old_opt_parsed
     _comp_cmd_tar__preparse_cmdline "${words[@]}"
 
     local ext
@@ -669,11 +751,7 @@ _comp_cmd_tar__posix_prev_handle()
 
 _comp_cmd_tar__posix()
 {
-    local long_opts short_opts basic_tar=set \
-        long_arg_none="" long_arg_opt long_arg_req="" \
-        short_arg_none short_arg_opt short_arg_req \
-        tar_mode tar_mode_arg old_opt_progress="" \
-        old_opt_used=set old_opt_parsed=()
+    local basic_tar=set
 
     # Main mode, e.g. -x or -c (extract/creation)
     local tar_mode=none
@@ -681,18 +759,29 @@ _comp_cmd_tar__posix()
     # The mode argument, e.g. -cpf or -c
     local tar_mode_arg=
 
-    local cur prev words cword was_split comp_args
+    # Compression mode - from long options
+    local tar_compression_mode=none
 
+    local cur prev words cword was_split comp_args
     _comp_initialize -s -- "$@" || return
 
-    tar_mode=none
-
+    # Initialize option variables:
     # relatively compatible modes are {c,t,x}
     # relatively compatible options {b,f,m,v,w}
+    # Note: long_{opts,arg_{none,opt}} and short_arg_opt are currently unused
+    local long_opts short_opts \
+        long_arg_none long_arg_opt long_arg_req \
+        short_arg_none short_arg_opt short_arg_req
+    long_arg_none=""
+    long_arg_opt=""
+    long_arg_req=""
+    long_opts=""
     short_arg_req="fb"
+    short_arg_opt=""
     short_arg_none="wmv"
     short_opts="$short_arg_req$short_arg_none"
 
+    local old_opt_progress old_opt_used old_opt_parsed
     _comp_cmd_tar__preparse_cmdline "${words[@]}"
 
     local ext

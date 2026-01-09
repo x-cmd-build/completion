@@ -1,4 +1,6 @@
 # shellcheck    shell=sh        disable=SC3043,2034,2154,2030,2031
+# https://github.com/scop/bash-completion/releases
+# https://github.com/zsh-users/zsh-completions/releases
 
 f_move(){
     local source="$1"
@@ -48,7 +50,7 @@ f_move(){
 }
 
 f_assemble(){
-    f_assemble_one "scop/bash-completion"        "2.12.0"    .tmp/bash-completion || return
+    f_assemble_one "scop/bash-completion"        "2.17.0"    .tmp/bash-completion || return
     f_assemble_one "zsh-users/zsh-completions"   "0.35.0"    .tmp/zsh-completion  || return
 
     f_move .tmp/bash-completion bash-completion || return
