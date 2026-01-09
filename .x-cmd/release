@@ -1,0 +1,26 @@
+# shellcheck    shell=sh        disable=SC3043,2034,2154,2030,2031
+
+upload_completion(){
+    # local version="v0.0.1"
+    local release_id="146180286"
+    local owner_repo="x-cmd-build/completion"
+    x:info "Clone repo x-cmd-build/completion"
+    [ -d "completion" ] || x gh cl x-cmd-build/completion
+    (
+        x cd completion
+        git pull origin main || return 1
+        x z zsh-completion.tar.xz  zsh-completion
+        x z bash-completion.tar.xz bash-completion
+        x gh repo release asset ls --release_id "${release_id}" --repo "${owner_repo}" \
+        | command awk 'NR>1 {print $1}' | while read -r asset_id; do
+            x gh repo release asset rm --repo "${owner_repo}" -y "$asset_id" || {
+                x:error "asset rm file"
+                return 1
+            }
+        done
+        x gh repo release attachment upload --release_id "${release_id}" --repo "${owner_repo}" zsh-completion.tar.xz
+        x gh repo release attachment upload --release_id "${release_id}" --repo "${owner_repo}" bash-completion.tar.xz
+    )
+}
+
+upload_completion "$@"
