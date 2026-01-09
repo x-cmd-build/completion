@@ -1,6 +1,9 @@
 # pkgutil completion                                       -*- shell-script -*-
 # Copyright 2006 Yann Rouillard <yann@opencsw.org>
 
+# At least macOS pkgutil is different
+[[ $OSTYPE == *solaris* ]] || return 1
+
 _comp_cmd_pkgutil__url2catalog()
 {
     local filename="$1"
@@ -30,8 +33,7 @@ _comp_cmd_pkgutil()
             catalog_files=("$REPLY")
         elif [[ ${words[i]} == --config ]]; then
             local REPLY
-            _comp_dequote "${words[i + 1]}"
-            [[ ${REPLY-} ]] && configuration_files=("$REPLY")
+            _comp_dequote "${words[i + 1]}" && configuration_files=("$REPLY")
         elif [[ ${words[i]} == -@([iurdacUS]|-install|-upgrade|-remove|-download|-available|-compare|-catalog|-stream) ]]; then
             command="${words[i]}"
         fi

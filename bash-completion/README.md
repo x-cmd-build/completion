@@ -1,6 +1,7 @@
 # bash-completion
 
 [![CI](https://github.com/scop/bash-completion/actions/workflows/ci.yaml/badge.svg)](https://github.com/scop/bash-completion/actions/workflows/ci.yaml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/scop/bash-completion/badge)](https://scorecard.dev/viewer/?uri=github.com%2Fscop%2Fbash-completion)
 
 ## Introduction
 
@@ -18,11 +19,13 @@ list of operating system distributions, package names, and available versions.
 Depending on the package, you may still
 need to source it from either `/etc/bashrc` or `~/.bashrc` (or any
 other file sourcing those). If you have _only_ bash >= 4.2 installed, you can
-do this by simply using:
+do this by using:
 
-```shell
-# Use bash-completion, if available
-[[ $PS1 && -f /usr/share/bash-completion/bash_completion ]] && \
+```bash
+# Use bash-completion, if available, and avoid double-sourcing
+[[ $PS1 &&
+  ! ${BASH_COMPLETION_VERSINFO:-} &&
+  -f /usr/share/bash-completion/bash_completion ]] &&
     . /usr/share/bash-completion/bash_completion
 ```
 
@@ -62,13 +65,36 @@ installed system wide. To do this:
 
 ### macOS (OS X)
 
-If you're using macOS (formerly OS X), `/etc/bashrc` is apparently not sourced at
-all. In that case, you can put the `bash_completion` file in `/sw/etc`
-and add the following code to `~/.bash_profile`:
+If you're using macOS (formerly OS X), `/etc/bashrc` is apparently not sourced
+at all, and `~/.bashrc` is not sourced from `~/.bash_profile` by default
+(because `~/.bash_profile` is not created by default).  In this case, the
+standard way is to configure `~/.bash_profile` to source `~/.bashrc` and write
+interactive settings in `~/.bashrc`.  You can source `~/.bashrc` in
+`~/.bash_profile` in the following way:
 
-```shell
-if [ -f /sw/etc/bash_completion ]; then
-   . /sw/etc/bash_completion
+```bash
+# ~/.bash_profile
+
+if [[ -f ~/.bashrc ]]; then
+  source ~/.bashrc
+fi
+```
+
+Then, you can source `bash-completion` in your `~/.bashrc`.  It should be noted
+that `bash-completion` should not be sourced in `~/.bash_profile` because
+`~/.bash_profile` is only loaded in interactive _login_ shell sessions.  If you
+start nested Bash sessions, the interactive settings in `~/.bash_profile` will
+disappear.  It is strongly recommended to source `~/.bashrc` from
+`~/.bash_profile` and write interactive settings in `~/.bashrc`.
+
+For example, if you install `bash-completion` using Homebrew, it will install
+the entry point of `bash-completion` to
+`$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh`.  We can source it by
+adding the following to our startup file `~/.bashrc`:
+
+```bash
+if [[ -s $HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh ]]; then
+  . "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh"
 fi
 ```
 
@@ -104,10 +130,11 @@ tracing on in it before doing anything else there.
    have to disable completion for that command in order to complete on
    the files that I need to?**
 
-A. No. Use `M-/` to (in the words of the bash man page) attempt file
+A. No. If needed just once in a while,
+   use `M-/` to (in the words of the bash man page) attempt file
    name completion on the text to the left of the cursor. This will
    circumvent any file type restrictions put in place by the bash
-   completion code.
+   completion code. If needed more regularly, see the next question:
 
 **Q. How can I override a completion shipped by bash-completion?**
 
@@ -168,7 +195,7 @@ A. [ Disclaimer: Here, how to make the completion code visible to
 
    ```m4
    PKG_CHECK_VAR(bashcompdir, [bash-completion], [completionsdir], ,
-     bashcompdir="${sysconfdir}/bash_completion.d")
+     bashcompdir="${datadir}/bash-completion/completions")
    AC_SUBST(bashcompdir)
    ```
 
@@ -183,12 +210,13 @@ A. [ Disclaimer: Here, how to make the completion code visible to
    `bash-completion-config-version.cmake` files. Example usage:
 
    ```cmake
+   include(GNUInstallDirs)
    find_package(bash-completion)
    if(BASH_COMPLETION_FOUND)
      message(STATUS
        "Using bash completion dir ${BASH_COMPLETION_COMPLETIONSDIR}")
    else()
-     set (BASH_COMPLETION_COMPLETIONSDIR "/etc/bash_completion.d")
+     set (BASH_COMPLETION_COMPLETIONSDIR "${CMAKE_INSTALL_DATADIR}/bash-completion/completions")
      message (STATUS
        "Using fallback bash completion dir ${BASH_COMPLETION_COMPLETIONSDIR}")
    endif()
@@ -286,12 +314,22 @@ A. Probably because the database is being queried every time and this uses a
 **Q. bash-completion interferes with my `command_not_found_handle` function
    (or the other way around)!**
 
-A. If your `command_not_found_handle` function is not intended to
-   address (possibly missing) commands invoked during bash
-   programmable completion functions, you can account for this
-   in the function by, for example, testing if the `$COMP_LINE`
-   variable is set and taking appropriate action, typically returning
-   early and silently with success.
+A. If your `command_not_found_handle` function is not intended to address
+   (possibly missing) commands invoked during bash programmable completion
+   functions, you can account for this in the function by, for example, testing
+   if the `$COMP_POINT` variable is set and taking appropriate action,
+   typically returning early and silently with success.  For keybindings with
+   `bind -x`, you may additionally want to check if the variable
+   `$READLINE_POINT` is set to skip the action.
+
+   > [!Note]
+   > We recommended checking whether `COMP_LINE` is *set*, which still works if
+   > properly done with e.g. `[[ ${COMP_LINE+set} ]]`.  However, if you have
+   > been checking if `COMP_LINE` is *non-empty* with `[[ ${COMP_LINE:-} ]]`,
+   > it may fail to detect programmable completion with the setting `complete
+   > -E` (in Bash >= 4.1) because `COMP_LINE` can be empty in this context.  It
+   > is safer to test `COMP_POINT` as one does not need to care about the
+   > differences between the set and non-empty states of variables.
 
 **Q. Can tab completion be made even easier?**
 
